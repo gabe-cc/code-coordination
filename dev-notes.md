@@ -1,0 +1,198 @@
+# Description
+Bebbit4ever
+
+# dev
+```bash
+cd frontend
+npm run dev
+```
+```bash
+cd backend
+npx tsx --watch .
+```
+
+## V0
+- [X] Basic Structure
+- [X] Working Authentication
+  - [X] Frontend Pages
+  - [X] Supporting Backend
+    - [X] Use passport
+    - [X] Username + password login
+- [X] Move DB to its own file
+- [X] Move Schemas to their own file and use them in frontend
+- [X] Add Frontend Flash Message
+- [X] Add Timeouts
+  - [X] Page timeout (message expires after x redirection)
+  - [X] Infinite timeout (message expires only after user removes it)
+  - [X] Time timeout (message expires after some time)
+- [X] Import whole ad-hoc chunk of MongoDB's js-bson to get access to a good ObjectID on the frontend, rip
+- [X] Have an actual isomorphic folder between backend and frontend
+- [X] Basic Todolist
+  - Per User and private
+  - Single one
+  - [X] Add Collection
+  - [X] Add Index for Collection
+  - [X] Add routes
+    - [X] View/Create Todolist
+    - [X] Edit/Create Todolist
+  - [X] Add Page
+    - [X] View Todolist
+    - [X] Add Item
+    - [X] Edit Item
+    - [X] Remove Item
+    - [X] Debounce Item Updates
+  - [X] Add to Menu
+- [X] Basic Real-Time Chat
+  - Single Chat for all ppl
+  - Each message has author, content and date
+  - [X] Add Collection
+  - [X] Add Index
+  - [X] Add Routes
+  - [X] Add Page
+    - [X] View Chat from last 24 hours
+    - [X] Poll every second
+    - [X] Post Message
+    - [X] Only poll from latest update
+    - [X] Speculatively add messages
+    - [X] Show Nicknames
+  - [X] Add to Menu
+- [X] Basic Threads
+  - [X] Create Schemas, Collections, Indexes and Views
+  - [X] Add Routes
+    - [X] List Threads
+    - [X] Create Thread
+    - [X] View Thread
+    - [X] Comment
+  - [X] Add Pages
+    - [X] Threads
+    - [X] Thread
+  - [X] Add to Menu
+- [X] Basic Document Tree
+  - Per User and private
+  - [X] Create Collections, Indexes, Schemas and Views
+  - [X] Add Routes
+    - [X] CRU Folder
+    - [X] All top-level Folders
+    - [X] CRU Document
+  - [X] Add Page
+    - [X] Roots
+    - [X] Folder
+      - [X] Show Content
+      - [X] Create Folder Children
+      - [X] Create File Children
+    - [X] Document
+      - [X] View and Edit
+  - [X] Add to Menu
+- [X] Minor Cleanups
+  - [X] Login
+    - [X] Move login and logout to user.ts
+    - [X] Change data-structure
+    - [X] Share redirect login logic instead of ad-hoc on all pages
+  - [X] Better hydration logic
+    - data | undefined, instead of separate boolean
+  - [X] Check page [id] change logic
+    - [X] use page id to avoid stale id
+    - [X] Wrap Pages into Component
+  - [X] Check that poll interval are cancelled in chat on dismount
+  - [X] Remove console.log
+    - [X] backend/index
+    - [X] +page.svelte
+  - [X] Move from slug to get params because of adapter-static
+  - ~~Make all updates optimistic~~
+    - Cancelled: doing cleanly costs a lot for not much
+  - [X] Don't close page while loading
+    - [X] Move to +page.ts
+      - Cancelled: breaks static website
+      - Uncancelled: need to use `if(browser)`
+    - [X] Preload
+      - freebie from svelte, as long as +page.ts
+- [ ] Basic Teams
+  - [ ] 1 admin per team
+  - [ ] each account belongs to one team
+  - [ ] Threads
+  - [ ] Real-Time Chat
+  - [ ] Document Tree
+  - [ ] Todo Lists
+- [ ] Basic Search
+  - [ ] Search word in all team content
+- [ ] Requests / Inbox
+- [ ] Go over text in all +page.svelte and see if it's correct/coherent
+- [ ] Add one line of comment to all foreign keys in schemas
+- [ ] Deploy
+
+# V1
+- Re-do Routes
+  - Move everything to post
+  - Remove application level `ok` in responses (redundant with 200 and response.ok)
+  - No fetch boilerplate
+  - Homogenise route names (create/view, singular/plural)
+  - Zod Validators for inputs instead of ad-hoc
+  - Typed Routes
+- [ ] Form Builder
+- [ ] Display Frontend Flash Messages
+  - [ ] Compactify all identical messages (just a counter)
+- E2E Tests
+- Styling
+  - Borders
+  - Colors
+  - Navbar
+  - Dates
+  - Contenteditable clear that they are text fields
+  - Font Family
+  - Pending Status Explicit (icon and/or text)
+- [ ] Shortcuts
+  - Per user and per team
+  - Just a page with shortcuts to threads, files, chats, etc.
+- User
+  - [ ] User Profiles
+- Todolist
+  - [ ] Separate Collection for Tasks
+  - [ ] Multiple Todolist per user and space
+  - [ ] Priorities for items
+  - [ ] Deadline for items
+  - [ ] Sync Indicator
+  - [ ] Poll for updates
+- Threads
+  - [ ] Forums (Channels for threads)
+  - [ ] Pagination for Thread List
+  - [ ] Show Author
+  - [ ] Show Date and Time
+  - [ ] Edit Comment
+  - [ ] Edit OP
+  - [ ] Show Edit History
+  - [ ] Show Date
+- Real-Time Chat
+  - [ ] Channels
+  - [ ] Web Socket
+- File Tree
+  - [ ] Basic Real-Time Doc Editing
+  - [ ] Trash and delete
+  - [ ] History
+  - [ ] Add date to folders and files
+  - [ ] Order Folders and Files alphabetically
+  - [ ] Markdown Rendering
+  - [ ] Get parent of file
+- Requests
+  - [ ] Priority from emitter
+- Good Environments
+  - [ ] Staging vs Prod
+  - [ ] Prod Super Duper Hidden
+  - [ ] Decide on Railway or VPS
+
+# V2
+- User
+  - [ ] Add recovery email, in case of lost password
+  - [ ] Magic Link
+  - [ ] Username generator for people with no inspiration
+    - [ ] ... or for everyone??
+  - [ ] Username / mail change
+    - [ ] Flush session cache in case
+- Integrations
+  - [ ] Mobile Push Notifications
+  - [ ] Mail to send requests, tasks and messages to
+  - [ ] Recap Email every day
+- Benchmarks
+  - Dummy DB with millions of records, time each query
+- Limit Everything
+  - Nb of request per second per IP
+  - Size of all text fields in schemas

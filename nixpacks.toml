@@ -1,0 +1,8 @@
+[phases.setup]
+nixPkgs = ['...', 'nodejs_18', 'bun']
+
+[phases.build]
+cmds = ['cd frontend ; bun install' , 'cd frontend ; bun run build' , 'cd backend ; bun install']
+
+[start]
+cmd = 'cd backend ; bun index.ts'
