@@ -6,6 +6,8 @@
   import { PUBLIC_BACKEND_URL } from '$env/static/public' ;
   import { flashPush } from '$lib/flash-messages' ;
   import deepEqual from 'deep-equal';
+  import { page } from '$app/stores';
+  import type { ObjectId } from '$iso/bson-objectid';
 
   let messages : Array<ChatMessageUser & {optimistic? : boolean}> | undefined = undefined ;
   let messages_last_update = null as Date | null ;
@@ -14,8 +16,11 @@
 
   const getMessages = async () => {
     const request_date = new Date() ;
-    const body = messages_last_update === null ? undefined : JSON.stringify({ last_date : messages_last_update }) ;
-    console.log('get' , body) ;
+    const body = JSON.stringify({
+      spaceId : $page.url.searchParams.get('s') ,
+      ...(messages_last_update === null ? {} : { last_date : messages_last_update }) ,
+    }) ;
+    // console.log('get' , body) ;
     const response = await fetch(`${PUBLIC_BACKEND_URL}/chat/view` , {
       credentials : 'include' ,
       body ,
@@ -25,8 +30,10 @@
       } ,
     });
     const json = await response.json() ;
+    console.log('got messages' , json) ;
     if (!json.ok) {
       flashPush('error' , `Could not load chat`) ;
+      console.error('error' , json) ;
     }
     const new_messages = json.messages.map((x : any) => ChatMessageUserZ.parse(x)) as Array<ChatMessageUser> ;
     new_messages.sort((x , y) => x.date.getTime() - y.date.getTime()) ;
@@ -41,6 +48,7 @@
             request_date.getTime() ,
           )
         ) ;
+      if (messages === undefined) messages = [] ;
     } else {
       const last_msg_date = new_messages.at(-1)!.date ;
       messages_last_update =
@@ -57,7 +65,7 @@
             request_date.getTime() ,
           )
         ) ;
-      messages = [...messages! , ...new_messages] ;
+      messages = [...(messages || []) , ...new_messages] ;
       messages = messages
         .filter(x => !(x.optimistic && x.date.getTime() <= messages_last_update!.getTime())) // remove optimistic messages older than what we got from the server
         .sort((x , y) => x.date.getTime() - y.date.getTime())
@@ -78,12 +86,13 @@
         date : new Date() ,
         optimistic : true ,
         text : message_to_send ,
+        space : null as any ,
       }] ;
       const text = message_to_send ;
       message_to_send = '' ;
       const response = await fetch(`${PUBLIC_BACKEND_URL}/chat/send-message` , {
         credentials : 'include' ,
-        body : JSON.stringify({text}) ,
+        body : JSON.stringify({text , spaceId : $page.url.searchParams.get('s')}) ,
         headers : {
           'Content-Type' : 'application/json' ,
         } ,

@@ -11,6 +11,7 @@ declare global {
       _id : ObjectId ;
       username : string ;
       password : string ;
+      space : ObjectId;
     }
   }
 }
@@ -18,6 +19,7 @@ declare global {
 export interface User {
   username: string;
   password: string;
+  space : ObjectId;
 }
 
 export interface SafeUser {
@@ -31,8 +33,8 @@ export type Item = z.infer<typeof ItemZ> ;
 export const ItemsZ = z.array(ItemZ) ;
 export type Items = z.infer<typeof ItemsZ> ;
 export const TodolistZ = z.object({
-  user_id : ObjectIdZ ,
   content : ItemsZ ,
+  space : ObjectIdZ ,
 })
 export type Todolist = z.infer<typeof TodolistZ>
 
@@ -40,6 +42,7 @@ export const ChatMessageZ = z.object({
   author : ObjectIdZ ,
   date : z.coerce.date() ,
   text : z.string() ,
+  space : ObjectIdZ ,
 }) ;
 export type ChatMessage = z.infer<typeof ChatMessageZ> ;
 
@@ -50,6 +53,7 @@ export const ChatMessageUserZ = z.object({
   }) ,
   date : z.coerce.date() ,
   text : z.string() ,
+  space : ObjectIdZ ,
 }) ;
 export type ChatMessageUser = z.infer<typeof ChatMessageUserZ> ;
 
@@ -58,6 +62,7 @@ export const ThreadZ = z.object({
   date : z.coerce.date() ,
   title : z.string() ,
   text : z.string() ,
+  space : ObjectIdZ ,
 }) ;
 export type Thread = z.infer<typeof ThreadZ> ;
 
@@ -104,6 +109,7 @@ export const ThreadFullZ = z.object({
   text : z.string() ,
   title : z.string() ,
   comments : z.array(ThreadCommentFullZ) ,
+  space : ObjectIdZ ,
 })
 export type ThreadFull = z.infer<typeof ThreadFullZ> ;
 
@@ -116,7 +122,6 @@ export type Folder = z.infer<typeof FolderZ> ;
 
 export const FolderFullZ = z.object({
   _id : ObjectIdZ ,
-  owner : ObjectIdZ ,
   name : z.string() ,
   parent : ObjectIdZ.nullable() , // null means top-level
   folder_children : z.array(z.object({
@@ -127,15 +132,15 @@ export const FolderFullZ = z.object({
     _id : ObjectIdZ ,
     name : z.string() ,
   })) ,
+  space : ObjectIdZ ,
 })
 export type FolderFull = z.infer<typeof FolderFullZ> ;
 
-
 export const FileZ = z.object({
-  owner : ObjectIdZ ,
   name : z.string() ,
   text : z.string() ,
   parent : ObjectIdZ ,
+  space : ObjectIdZ ,
 }) ;
 export type File = z.infer<typeof FileZ> ;
 
@@ -143,3 +148,33 @@ export const FileUserZ = FileZ.extend({
   _id : ObjectIdZ ,
 }) ;
 export type FileUser = z.infer<typeof FileUserZ> ;
+
+export const SpaceZ = z.object({
+}) ;
+export type Space = z.infer<typeof SpaceZ> ;
+
+export type SpaceIdEz =
+| {type : 'id' , content : ObjectId }
+| {type : 'user-name' , content : string }
+| {type : 'team-name' , content : string }
+export const SpaceIdEzZ = z.custom<ObjectId | string>((val) => {
+  if (val instanceof ObjectId) return true ;
+  if (typeof val !== 'string') return false ;
+  if (ObjectId.isValid(val)) return true ;
+  if (val.startsWith('id-') && ObjectId.isValid(val.slice(3))) return true ;
+  if (val.startsWith('u-') && val.length > 2) return true ;
+  if (val.startsWith('t-') && val.length > 2) return true ;
+  return false ;
+}).transform((val : ObjectId | string) : SpaceIdEz => {
+  if (val instanceof ObjectId)
+    return {type : 'id' , content : val} ;
+  if (ObjectId.isValid(val))
+    return {type : 'id' , content : ObjectId.createFromHexString(val)} ;
+  if (val.startsWith('id-') && ObjectId.isValid(val.slice(3)))
+    return {type : 'id' , content : ObjectId.createFromHexString(val.slice(3))} ;
+  if (val.startsWith('u-') && val.length > 2)
+    return {type : 'user-name' , content : val.slice(2)} ;
+  if (val.startsWith('t-') && val.length > 2)
+    return {type : 'team-name' , content : val.slice(2)} ;
+  throw new Error(`impossible`)
+});

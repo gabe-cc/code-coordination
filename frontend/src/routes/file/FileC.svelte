@@ -4,6 +4,7 @@
   import { type File } from '$iso/schemas' ;
   import type { ObjectId } from '$iso/bson-objectid' ;
   import debounce from 'debounce';
+    import { page } from '$app/stores';
 
   export let file : File & {_id : ObjectId} ;
   let content = file.text ;

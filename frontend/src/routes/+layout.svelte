@@ -28,10 +28,7 @@
     <a href="/register">Register</a>
   {:else}
     <a href="/dashboard">Dashboard</a>
-    <a href="/todo">Todolist</a>
-    <a href="/chat">Chat</a>
-    <a href="/threads">Threads</a>
-    <a href="/folders">Roots</a>
+    <a href="/space?s=u-{$loggedUser$.username}">My Space</a>
     <a href="/logout">Log Out</a>
   {/if}
 </nav>

@@ -3,7 +3,7 @@ dotenv.config();
 export * as Schemas from '../iso/schemas' ;
 import { createClient } from 'redis';
 import { MongoClient } from 'mongodb';
-import { ChatMessage, ChatMessageUser, File, Folder, FolderFull, Thread, ThreadComment, ThreadFull, ThreadListed, Todolist, User } from '../iso/schemas';
+import { ChatMessage, ChatMessageUser, File, Folder, FolderFull, Space, Thread, ThreadComment, ThreadFull, ThreadListed, Todolist, User } from '../iso/schemas';
 import { pipeline } from 'zod';
 
 export const redisClient = createClient({
@@ -24,6 +24,7 @@ export const threadsFull = db.collection<ThreadFull>('threads-full') ;
 export const folders = db.collection<Folder>('folders') ;
 export const foldersFull = db.collection<FolderFull>('folders-full') ;
 export const files = db.collection<File>('files') ;
+export const spaces = db.collection<Space>('spaces') ;
 
 export const main = async () => {
   console.log(`Connecting to REDIS and MongoDB`) ;
@@ -35,17 +36,17 @@ export const main = async () => {
   console.log(`Setting up indexes`) ;
   await Promise.all([
     users.createIndex({ username : 1 } , { unique : true }) ,
-    todolists.createIndex({ user_id : 1 } , { unique : true }) ,
-    chatMessages.createIndex({ date : 1 }) ,
-    chatMessages.createIndex({ author : 1 }) ,
-    threads.createIndex({ date : 1 }) ,
-    threadComments.createIndex({ date : 1 }) ,
+    todolists.createIndex({ space : 1 } , { unique : true }) ,
+    chatMessages.createIndex({ space : 1 , date : 1 }) ,
+    chatMessages.createIndex({ space : 1 , author : 1 }) ,
+    threads.createIndex({ space : 1 , date : 1 }) ,
+    threads.createIndex({ space : 1 }) ,
     threadComments.createIndex({ thread_root : 1 }) ,
-    folders.createIndex({ owner : 1 }) ,
+    threadComments.createIndex({ thread_root : 1 , date : 1 }) ,
     folders.createIndex({ parent : 1 }) ,
-    folders.createIndex({ owner : 1 , parent : 1 }) , // important to quickly find top-level folders
-    files.createIndex({ owner : 1 }) ,
+    folders.createIndex({ space : 1 , parent : 1 }) , // important to quickly find top-level folders
     files.createIndex({ parent : 1 }) ,
+    spaces.createIndex({ owner : 1 , owner_type : 1 }) ,
   ]) ;
   console.log(`Indexes set up`) ;
   console.log(`Creating Views`) ;
@@ -77,6 +78,7 @@ export const main = async () => {
           author: 1 ,
           date: 1 ,
           text: 1 ,
+          space: 1,
         }
       }] ,
     }) ,
@@ -149,6 +151,7 @@ export const main = async () => {
           author: 1 ,
           date: 1,
           title: 1,
+          space: 1,
         }
       }
       ]

@@ -6,24 +6,14 @@
   import type { ObjectId } from '$iso/bson-objectid/objectid';
   import { requireAuthentication } from '$lib/user';
   import { afterNavigate } from '$app/navigation';
+  import { getThreads } from './threads';
+  import type { PageData } from './$types';
+  import { page } from '$app/stores';
 
-  let threads : Array<ThreadListed & {_id : ObjectId}> | undefined = undefined ;
+  export let data : PageData ;
+
+  let threads : Array<ThreadListed & {_id : ObjectId}> | undefined = data.threads ;
   let creating = false ;
-
-  const getThreads = async () => {
-    const response = await fetch(`${PUBLIC_BACKEND_URL}/threads/all` , {
-      credentials : 'include' ,
-      method : 'POST' ,
-      headers : {
-        'Content-Type' : 'application/json' ,
-      } ,
-    });
-    if (!response.ok) {
-      return flashPush('error' , `Could not load threads`) ;
-    }
-    const json = await response.json() ;
-    threads = json.threads ;
-  } ;
 
   export let title = '' ;
   export let text = '' ;
@@ -36,6 +26,7 @@
     }
     const body = JSON.stringify({
       title , text ,
+      spaceId : $page.url.searchParams.get('s') ,
     }) ;
     creating = true ;
     const response = await fetch(`${PUBLIC_BACKEND_URL}/threads/create` , {
@@ -49,16 +40,16 @@
     if (!response.ok) {
       return flashPush('error' , `Could not create thread`) ;
     }
-    await getThreads() ;
+    threads = await getThreads({spaceId : $page.url.searchParams.get('s') , fetch}) ;
     title = '' ;
     text = '' ;
     creating = false ;
   } ;
 
   onMount(async () => {
-    await Promise.all([
-      getThreads() ,
-    ]) ;
+    if (threads === undefined) {
+      threads = await getThreads({spaceId : $page.url.searchParams.get('s') , fetch}) ;
+    }
   });
 
   afterNavigate(() => {

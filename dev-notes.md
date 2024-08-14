@@ -106,32 +106,70 @@ npx tsx --watch .
       - Uncancelled: need to use `if(browser)`
     - [X] Preload
       - freebie from svelte, as long as +page.ts
+- [X] Spaces
+  - Constraints
+    - Owner can be team, or user
+    - user has single space
+    - One universal space?
+    - to-do list linked to a space
+    - chat messages linked to a space
+    - threads (but not thread comments)
+    - folders and files linked to space
+    - space page that links to all the others
+  - [X] Update Schemas, Collections, Indexes and Views
+  - [X] Pages
+    - [X] Remove Top-Level Menu
+    - [X] Space Index Page
+    - [X] Update all pages with space
+      - [X] All Threads, Create Threads, View Thread
+      - [X] Folder Roots, View folder, Edit Folder
+      - [X] Create Folder, Create File, View File
+      - [X] Edit File
+      - [X] Chat
+      - [X] To-do list
+  - [X] Space Id Ez with user and team names
+  - [X] Routes
+    - [X] Get Space from user name
+    - [X] Update all routes with Space
+    - [X] Check for permission whenever Space
+- [ ] Fix req.user and User
+  - [ ] Remove password from req.user
 - [ ] Basic Teams
-  - [ ] 1 admin per team
-  - [ ] each account belongs to one team
-  - [ ] Threads
-  - [ ] Real-Time Chat
-  - [ ] Document Tree
-  - [ ] Todo Lists
+  - 1 admin per team
+  - 1 user can be in multiple team
+  - each team has its space
+  - [ ] DB stuff
+    - [ ] Add list of teams in req.user
+  - [ ] Pages
+    - [ ] Update Dashboard
+      - [ ] Team Requests
+      - [ ] Joined teams + links to space
+    - [ ] Team Dashboard
+    - [ ] Admin Team
+      - [ ] Invite user to team
+      - [ ] All users in team
+      - [ ] Remove user from team
 - [ ] Basic Search
   - [ ] Search word in all team content
 - [ ] Requests / Inbox
 - [ ] Go over text in all +page.svelte and see if it's correct/coherent
+- [ ] Remove debug text in +page.svelte
 - [ ] Add one line of comment to all foreign keys in schemas
-- [ ] Deploy
+- [ ] Dirty Railway Deploy
+  - [ ] Remove Bun Garbagino
 
 # V1
 - Re-do Routes
   - Move everything to post
   - Remove application level `ok` in responses (redundant with 200 and response.ok)
-  - No fetch boilerplate
+  - Remove fetch boilerplate
+  - Remove spaceId boilerplate
   - Homogenise route names (create/view, singular/plural)
   - Zod Validators for inputs instead of ad-hoc
   - Typed Routes
 - [ ] Form Builder
 - [ ] Display Frontend Flash Messages
   - [ ] Compactify all identical messages (just a counter)
-- E2E Tests
 - Styling
   - Borders
   - Colors
@@ -143,6 +181,13 @@ npx tsx --watch .
 - [ ] Shortcuts
   - Per user and per team
   - Just a page with shortcuts to threads, files, chats, etc.
+  - Obsolete by Space Page?
+- Security
+  - [ ] Check all routes for authorisation
+  - [ ] Refactor authorisation
+- Optim
+  - [ ] Check everything for pre-loading on hover
+- E2E Tests
 - User
   - [ ] User Profiles
 - Todolist
@@ -178,8 +223,12 @@ npx tsx --watch .
   - [ ] Staging vs Prod
   - [ ] Prod Super Duper Hidden
   - [ ] Decide on Railway or VPS
+  - [ ] Mongo Atlas
 
 # V2
+- Massive Optim
+  - [ ] Incremental queries?
+    - How do you log all events since date T, including deletions?
 - User
   - [ ] Add recovery email, in case of lost password
   - [ ] Magic Link
@@ -194,5 +243,12 @@ npx tsx --watch .
 - Benchmarks
   - Dummy DB with millions of records, time each query
 - Limit Everything
+  - Username and Teamname format (URL friendly)
   - Nb of request per second per IP
   - Size of all text fields in schemas
+  - 20 teams per account
+  - limit / pagination on all queries with unbounded nb
+    - threads
+    - folders
+    - roots
+  - chunk files

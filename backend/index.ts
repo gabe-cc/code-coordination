@@ -4,14 +4,14 @@ dotenv.config();
 import express, { Request, Response, NextFunction } from 'express';
 import session from 'express-session';
 import RedisStore from 'connect-redis';
-import { ObjectId, WithId } from 'mongodb';
+import { Document, ObjectId, WithId } from 'mongodb';
 import bcrypt from 'bcrypt';
 import cors from 'cors';
 import passport from 'passport';
 import { Strategy as LocalStrategy } from 'passport-local';
-import { redisClient, users, main as dbMain, todolists, Schemas, chatMessages, chatMessagesUsers, threads, threadComments, threadsListed, threadsFull, folders, files, foldersFull } from './db';
+import { redisClient, users, main as dbMain, todolists, Schemas, chatMessages, chatMessagesUsers, threads, threadComments, threadsListed, threadsFull, folders, files, foldersFull, spaces } from './db';
 import { z } from 'zod';
-import { ChatMessage, ObjectIdZ, User } from './iso/schemas';
+import { ChatMessage, ObjectIdZ, Space, SpaceIdEz, SpaceIdEzZ, User } from './iso/schemas';
 
 const PORT = process.env.PORT || 3000;
 
@@ -103,11 +103,20 @@ app.get('/user', isAuthenticated, (req: Request, res: Response): void => {
   res.json({ user : { username : req.user!.username , _id : req.user!._id } });
 });
 
-app.get('/todo' , isAuthenticated , async (req , res) => {
-  const _id = req.user!._id ;
+app.post('/todo/view' , isAuthenticated , async (req , res) => {
+  const spaceIdEzRaw = req.body.spaceId ;
+  const parsed = SpaceIdEzZ.safeParse(spaceIdEzRaw) ;
+  if (!parsed.success) {
+    return res.status(400).json({message : `Expected a 'space' id`}) ;
+  }
+  const spaceIdEz = parsed.data ;
+  const spaceId = userSpaceAuthorisedId(req.user! , spaceIdEz) ;
+  if (!spaceId)
+      return res.status(400).json({message : `Wrong space id`}) ;
+
   const todolist = await todolists.findOneAndUpdate(
-    { user_id : _id } ,
-    { $setOnInsert : { user_id : _id , content : [] } } ,
+    { space : spaceId } ,
+    { $setOnInsert : { space : spaceId , content : [] } } ,
     { upsert : true , returnDocument : 'after' } ,
   ) ;
   if (!todolist) return res.status(500).json({message : 'could not fetch todolist'}) ;
@@ -122,23 +131,45 @@ app.post('/chat/view' , isAuthenticated , async (req , res) => {
     new Date().getTime() - DAY_MS ,
   ) ;
   // console.log('reference date' , new Date(reference_timestamp)) ;
-  const messages = await chatMessagesUsers.find({
-    date : { $gte : new Date(reference_timestamp) } ,
-  }).toArray() ;
-  // console.log(messages) ;
+  const spaceIdEzRaw = req.body.spaceId ;
+  const parsed = SpaceIdEzZ.safeParse(spaceIdEzRaw) ;
+  if (!parsed.success) {
+    return res.status(400).json({message : `Expected a 'space' id`}) ;
+  }
+  const spaceIdEz = parsed.data ;
+  const spaceId = userSpaceAuthorisedId(req.user! , spaceIdEz) ;
+  if (!spaceId)
+      return res.status(400).json({message : `Wrong space id`}) ;
+  const query = {
+    space: spaceId,
+    date: { $gte: new Date(reference_timestamp) },
+  };
+  const messages = await chatMessagesUsers.find(query).toArray() ;
+  // console.log('chat/view' , query , messages) ;
   return res.json({messages , ok : true}) ;
 }) ;
+
 app.post('/chat/send-message' , isAuthenticated , async (req , res) => {
   if (typeof req.body.text !== 'string') {
     return res.status(400).json({ message : `Expected a string 'text' field in body`}) ;  
   }
   const text = req.body.text ;
+  const spaceIdEzRaw = req.body.spaceId ;
+  const parsed = SpaceIdEzZ.safeParse(spaceIdEzRaw) ;
+  if (!parsed.success) {
+    return res.status(400).json({message : `Expected a 'space' id`}) ;
+  }
+  const spaceIdEz = parsed.data ;
+  const spaceId = userSpaceAuthorisedId(req.user! , spaceIdEz) ;
+  if (!spaceId)
+      return res.status(400).json({message : `Wrong space id`}) ;
   const message : ChatMessage = {
     author : req.user!._id ,
     date : new Date() ,
-    text ,
+    text , space : spaceId ,
   }
   const response = await chatMessages.insertOne(message) ;
+  // console.log('chat/send' , message) ;
   if (response.acknowledged) {
     return res.json({ok : true}) ;
   } else {
@@ -147,13 +178,32 @@ app.post('/chat/send-message' , isAuthenticated , async (req , res) => {
 }) ;
 
 app.post('/threads/all' , isAuthenticated , async (req , res) => {
-  const response = await threadsListed.find({}).toArray() ;
-  // console.log(`all threads` , response) ;
+  const spaceIdEzRaw = req.body.spaceId ;
+  const parsed = SpaceIdEzZ.safeParse(spaceIdEzRaw) ;
+  if (!parsed.success) {
+    return res.status(400).json({message : `Expected a 'space' id`}) ;
+  }
+  const spaceIdEz = parsed.data ;
+  const spaceId = userSpaceAuthorisedId(req.user! , spaceIdEz) ;
+  if (!spaceId)
+      return res.status(400).json({message : `Wrong space id`}) ;
+  const response = await threadsListed.find({space : spaceId}).toArray() ;
+  console.log(`all threads` , response , spaceId) ;
   return res.json({ok : true , threads : response}) ;
 }) ;
+
 app.post(`/threads/create` , isAuthenticated , async (req , res) => {
   const title = req.body.title ;
   const text = req.body.text ;
+  const spaceIdEzRaw = req.body.spaceId ;
+  const parsed = SpaceIdEzZ.safeParse(spaceIdEzRaw) ;
+  if (!parsed.success) {
+    return res.status(400).json({message : `Expected a 'space' id`}) ;
+  }
+  const spaceIdEz = parsed.data ;
+  const spaceId = userSpaceAuthorisedId(req.user! , spaceIdEz) ;
+  if (!spaceId)
+      return res.status(400).json({message : `Wrong space id`}) ;
   if (typeof text !== 'string') {
     return res.status(400).json({ message : `Expected a string 'text' field in body`}) ;  
   }
@@ -162,9 +212,11 @@ app.post(`/threads/create` , isAuthenticated , async (req , res) => {
   }
   const thread = {
     author: req.user!._id,
+    space : spaceId ,
     date: new Date(),
     text, title ,
   } ;
+  console.log('create thread' , thread , spaceId) ;
   const response = await threads.insertOne(thread) ;
   if (response.acknowledged) {
     return res.json({ok : true}) ;
@@ -178,6 +230,10 @@ app.post('/threads/view' , isAuthenticated , async (req , res) => {
     return res.status(400).json({ message : `Expected an '_id' field in body`}) ;  
   }
   const response = await threadsFull.findOne({_id: _idParse.data}) ;
+  if (!response || !isUserSpaceAuthorised(req.user! , response.space)) {
+    return res.status(400).json({ message : `Wrong Thread`}) ;
+  }
+
   // const response = await threads.findOne({_id: _idParse.data}) ;
   // console.log(`view thread response`, {_id : _idParse.data , type : typeof _idParse.data} , response) ;
   return res.json({...response}) ;
@@ -210,6 +266,15 @@ app.post('/threads/comment' , isAuthenticated , async (req , res) => {
 }) ;
 
 app.post(`/folder/create` , isAuthenticated , async (req , res) => {
+  const spaceIdEzRaw = req.body.spaceId ;
+  const parsedSpaceIdEz = SpaceIdEzZ.safeParse(spaceIdEzRaw) ;
+  if (!parsedSpaceIdEz.success) {
+    return res.status(400).json({message : `Expected a 'space' id`}) ;
+  }
+  const spaceIdEz = parsedSpaceIdEz.data ;
+  const spaceId = userSpaceAuthorisedId(req.user! , spaceIdEz) ;
+  if (!spaceId)
+      return res.status(400).json({message : `Wrong space id`}) ;
   const name = req.body.name ;
   if (typeof name !== 'string') {
     return res.status(400).json({ message : `Expected a string name`}) ;
@@ -227,7 +292,7 @@ app.post(`/folder/create` , isAuthenticated , async (req , res) => {
   }
   const new_folder = {
     owner : req.user!._id ,
-    name , parent ,
+    name , parent , space : spaceId ,
   } ;
   // console.log(`Creating new folder` , new_folder) ;
   const response = await folders.insertOne(new_folder) ;
@@ -239,8 +304,17 @@ app.post(`/folder/create` , isAuthenticated , async (req , res) => {
 }) ;
 
 app.post(`/folder/roots` , isAuthenticated , async (req , res) => {
+  const spaceIdEzRaw = req.body.spaceId ;
+  const parsedSpaceIdEz = SpaceIdEzZ.safeParse(spaceIdEzRaw) ;
+  if (!parsedSpaceIdEz.success) {
+    return res.status(400).json({message : `Expected a 'space' id`}) ;
+  }
+  const spaceIdEz = parsedSpaceIdEz.data ;
+  const spaceId = userSpaceAuthorisedId(req.user! , spaceIdEz) ;
+  if (!spaceId)
+      return res.status(400).json({message : `Wrong space id`}) ;
   const roots = await folders.find({
-    owner : req.user!._id ,
+    space : spaceId ,
     parent : null ,
   }).toArray() ;
   return res.json({roots}) ;
@@ -253,10 +327,10 @@ app.post(`/folder/view` , isAuthenticated , async (req , res) => {
     return res.status(400).json({message : `Expected an ObjectID _id`}) ;
   }
   const response = await foldersFull.findOne({
-    owner : req.user!._id ,
     _id : parsed.data ,
   }) ;
-  if (response === null) return res.status(404).json({message : `No folder with given id`}) ;
+  if (response === null || !isUserSpaceAuthorised(req.user! , response.space))
+    return res.status(404).json({message : `No folder with given id`}) ;
   return res.json({folder : response}) ;
 }) ;
 
@@ -288,8 +362,8 @@ app.post(`/folder/edit` , isAuthenticated , async (req, res) => {
   }
   if (new_name === undefined && new_parent === undefined) return res.status(400).json({message : `no edit`}) ;
   const response = await folders.findOneAndUpdate({
-    owner : req.user!._id ,
     _id : parsed.data ,
+    space : {$in : userAllowedSpaces(req.user!) } ,
   } , {$set:{
     ...(new_parent !== undefined ? { parent : new_parent } : {}) ,
     ...(new_name !== undefined ? { name : new_name } : {}) ,
@@ -313,9 +387,17 @@ app.post(`/file/create` , isAuthenticated , async (req , res) => {
     return res.status(400).json({message : `Expected an ObjectID parent`}) ;
   }
   const parent = parsed.data ;
+  const spaceIdEzRaw = req.body.spaceId ;
+  const parsedSpaceIdEz = SpaceIdEzZ.safeParse(spaceIdEzRaw) ;
+  if (!parsedSpaceIdEz.success) {
+    return res.status(400).json({message : `Expected a 'space' id`}) ;
+  }
+  const spaceIdEz = parsedSpaceIdEz.data ;
+  const spaceId = userSpaceAuthorisedId(req.user! , spaceIdEz) ;
+  if (!spaceId)
+      return res.status(400).json({message : `Wrong space id`}) ;
   const response = await files.insertOne({
-    owner : req.user!._id ,
-    name , parent , text ,
+    name , parent , text , space : spaceId ,
   }) ;
   if (response.acknowledged) {
     return res.json({ ok : true}) ;
@@ -331,8 +413,8 @@ app.post(`/file/view` , isAuthenticated , async (req , res) => {
     return res.status(400).json({message : `Expected an ObjectID _id`}) ;
   }
   const response = await files.findOne({
-    owner : req.user!._id ,
     _id : parsed.data ,
+    space : {$in : userAllowedSpaces(req.user!) } ,
   }) ;
   if (response === null) return res.status(404).json({message : `No file with given id`}) ;
   return res.json({file : response}) ;
@@ -364,27 +446,105 @@ app.post(`/file/edit` , isAuthenticated , async (req, res) => {
   }
   if (new_name === undefined && new_text === undefined) return res.status(400).json({message : `no edit`}) ;
   const query = {
-    owner: req.user!._id,
-    _id: parsed.data,
+    _id: parsed.data ,
+    space : {$in : userAllowedSpaces(req.user!)} ,
   } ;
+  // console.log('file/edit' , query , new_text , new_name) ;
   const response = await files.findOneAndUpdate(query , {$set:{
     ...(new_text !== undefined ? { text : new_text } : {}) ,
     ...(new_name !== undefined ? { name : new_name } : {}) ,
   }}) ;
+  // const debug = await files.findOne({_id : parsed.data}) ;
+  // console.log('debug' , debug) ;
+  // console.log('response' , response) ;
   // console.log('file edit' , query) ;
   if (response === null) return res.status(500).json({message : `Error while editing`}) ;
   return res.json({ok : true}) ;
+}) ;
+
+const isUserSpaceAuthorised = (user : Express.User , spaceId : ObjectId) => {
+  return user.space.equals(spaceId) ;
+} ;
+
+const userSpaceAuthorisedId = (user : Express.User , spaceIdEz : SpaceIdEz) : ObjectId | null => {
+  if (spaceIdEz.type === 'id') {
+    return user.space.equals(spaceIdEz.content) ? spaceIdEz.content : null ;
+  } else if (spaceIdEz.type === 'user-name') {
+    return user.username === spaceIdEz.content ? user.space : null ;
+  } else if (spaceIdEz.type === 'team-name') {
+    throw new Error(`team not supported yet`)
+  } else {
+    return spaceIdEz ;
+  }
+} ;
+
+const userAllowedSpaces = (user : Express.User) => {
+  return [user.space] ;
+}
+
+app.post(`/space/get` , isAuthenticated , async (req , res) => {
+  const spaceIdEzRaw = req.body.spaceId ;
+  const parsed = SpaceIdEzZ.safeParse(spaceIdEzRaw) ;
+  if (!parsed.success) {
+    return res.status(400).json({message : `Expected a 'space' id`}) ;
+  }
+  const spaceIdEz = parsed.data ;
+  const spaceId = userSpaceAuthorisedId(req.user! , spaceIdEz) ;
+  if (!spaceId)
+      return res.status(400).json({message : `Wrong space id`}) ;
+  if (spaceIdEz.type === 'id') {
+    const response = await spaces.findOne({_id : spaceId}) ;
+    if (response === null)
+      return res.status(400).json({message : `Wrong space id`}) ;
+    return res.json({space : response}) ;
+  } else if (spaceIdEz.type === 'user-name') {
+    const response = await users.aggregate([
+      {$match : { _id : req.user!._id }} ,
+      {$lookup : {
+        as : 'userSpaces' , localField : 'space' ,
+        from : 'spaces' , foreignField : '_id' ,
+      }} ,
+      {$unwind : '$userSpaces'} ,
+      {$replaceRoot : {newRoot : '$userSpaces'}} ,
+    ]).toArray() ;
+    console.log('response' , response) ;
+    if (response === null) {
+      return res.status(400).json({message : `Wrong space id`}) ;
+    } else if (response.length === 0) {
+      const spaceRaw = {} ;
+      const space = await spaces.insertOne(spaceRaw) ;
+      await users.findOneAndUpdate(
+        {_id : req.user!._id} ,
+        {$set : {space : space.insertedId}} ,
+      ) ;
+      return res.json({space : {...spaceRaw , _id : space.insertedId}}) ;
+    } else if (response.length === 1) {
+      return res.json({space : response[0]}) ;  
+    } else {
+      return res.status(400).json({message : `Wrong space id`}) ;
+    }
+  } else {
+    res.status(500).json({message : 'team id not supported yet'}) ;
+  }
 }) ;
 
 const PostTodoZ = z.object({
   new_content : Schemas.ItemsZ ,
 }) ;
 
-app.post('/todo' , isAuthenticated , async (req , res) => {
-  const _id = req.user!._id ;
+app.post('/todo/update' , isAuthenticated , async (req , res) => {
+  const spaceIdEzRaw = req.body.spaceId ;
+  const parsed = SpaceIdEzZ.safeParse(spaceIdEzRaw) ;
+  if (!parsed.success) {
+    return res.status(400).json({message : `Expected a 'space' id`}) ;
+  }
+  const spaceIdEz = parsed.data ;
+  const spaceId = userSpaceAuthorisedId(req.user! , spaceIdEz) ;
+  if (!spaceId)
+      return res.status(400).json({message : `Wrong space id`}) ;
   const { new_content } = PostTodoZ.parse(req.body) ;
   const todolist = await todolists.findOneAndUpdate(
-    { user_id : _id } ,
+    { space : spaceId } ,
     { $set : { content : new_content } } ,
   ) ;
   if (!todolist) return res.status(500).json({message : 'could not fetch todolist'}) ;
