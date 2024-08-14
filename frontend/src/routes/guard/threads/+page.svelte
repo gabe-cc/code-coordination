@@ -4,8 +4,6 @@
   import { PUBLIC_BACKEND_URL } from '$env/static/public' ;
   import { flashPush } from '$lib/flash-messages' ;
   import type { ObjectId } from '$iso/bson-objectid/objectid';
-  import { requireAuthentication } from '$lib/user';
-  import { afterNavigate } from '$app/navigation';
   import { getThreads } from './threads';
   import type { PageData } from './$types';
   import { page } from '$app/stores';
@@ -51,10 +49,6 @@
       threads = await getThreads({spaceId : $page.url.searchParams.get('s') , fetch}) ;
     }
   });
-
-  afterNavigate(() => {
-    $requireAuthentication = true ;
-  }) ;
 </script>
 
 {#if threads !== undefined}
@@ -62,7 +56,7 @@
   <ul>{#each threads as {date , author , title , _id} , i}
     <li>
       <div>{author.username} at {date}</div>
-      <div><a href="/thread?id={_id}">{title}</a></div>
+      <div><a href="/guard/thread?id={_id}">{title}</a></div>
     </li>
   {/each}</ul>
   <h1>Create Thread</h1>

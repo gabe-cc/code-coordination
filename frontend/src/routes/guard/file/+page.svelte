@@ -4,7 +4,6 @@
   import { page } from '$app/stores' ;
   import { FileUserZ, type File } from '$iso/schemas' ;
   import type { ObjectId } from '$iso/bson-objectid' ;
-  import { requireAuthentication } from '$lib/user';
   import { afterNavigate } from '$app/navigation';
   import FileC from './FileC.svelte';
   import { onMount } from 'svelte';
@@ -17,10 +16,6 @@
   onMount(async () => {
     file = await getFile({id : $page.url.searchParams.get('id') , fetch}) ;
   })
-
-  afterNavigate(() => {
-    $requireAuthentication = true ;
-  }) ;
 </script>
 
 {#if file !== undefined}

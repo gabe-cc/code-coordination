@@ -15,16 +15,26 @@ declare global {
   }
 }
 
-export interface User {
+export type User = {
   username: string;
   password: string;
   space : ObjectId;
+  teams: Array<ObjectId>;
 }
 
-export interface SafeUser {
+export type UserFull = {
+  _id : ObjectId ;
+  password: string;
+  username : string ;
+  space : ObjectId ;
+  teams : Array<Team> ;
+}
+
+export type SafeUserFull = {
   _id : ObjectId ;
   username : string ;
-  space : ObjectId;
+  space : ObjectId ;
+  teams : Array<Team> ;
 }
 
 export const ItemZ = z.string() ;
@@ -178,3 +188,25 @@ export const SpaceIdEzZ = z.custom<ObjectId | string>((val) => {
     return {type : 'team-name' , content : val.slice(2)} ;
   throw new Error(`impossible`)
 });
+
+export const TeamZ = z.object({
+  admin : ObjectIdZ , // user id
+  space : ObjectIdZ ,
+  teamname : z.string() ,
+}) ;
+
+export type Team = z.infer<typeof TeamZ> ;
+
+export const TeamRequestZ = z.object({
+  team : ObjectIdZ ,
+  user : ObjectIdZ ,
+}) ;
+
+export type TeamRequest = z.infer<typeof TeamRequestZ> ;
+
+export const TeamRequestFullZ = z.object({
+  team : TeamZ.extend({_id : ObjectIdZ}) ,
+  user : ObjectIdZ ,
+}) ;
+
+export type TeamRequestFull = z.infer<typeof TeamRequestFullZ> ;

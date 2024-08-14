@@ -9,7 +9,7 @@
   async function handleSubmit() {
     const response = await login(username , password) ;
     if (response.ok) {
-      goto('/dashboard')
+      goto('/guard/dashboard')
     } else {
       error = response.error ;
     }

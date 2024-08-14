@@ -1,12 +1,11 @@
 <script lang="ts">
   import { onMount } from 'svelte' ;
   import { afterNavigate, goto } from '$app/navigation' ;
-  import { getLoggedUser , loggedUser$, requireAuthentication } from '$lib/user' ;
   import { type Items , ItemsZ } from '$iso/schemas' ;
   import { PUBLIC_BACKEND_URL } from '$env/static/public' ;
   import { flashPush } from '$lib/flash-messages' ;
   import debounce from 'debounce' ;
-    import { page } from '$app/stores';
+  import { page } from '$app/stores';
 
   let items : Items | undefined = undefined ;
 
@@ -61,10 +60,6 @@
   const removeItem = async (i : number) => {
     items = items!.filter((_ , j) => j !== i) ;
   } ;
-
-  afterNavigate(() => {
-    $requireAuthentication = true ;
-  }) ;
 
   onMount(async () => {
     await Promise.all([

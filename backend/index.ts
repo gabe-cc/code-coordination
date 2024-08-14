@@ -9,7 +9,7 @@ import bcrypt from 'bcrypt';
 import cors from 'cors';
 import passport from 'passport';
 import { Strategy as LocalStrategy } from 'passport-local';
-import { redisClient, users, main as dbMain, todolists, Schemas, chatMessages, chatMessagesUsers, threads, threadComments, threadsListed, threadsFull, folders, files, foldersFull, spaces } from './db';
+import { redisClient, users, main as dbMain, todolists, Schemas, chatMessages, chatMessagesUsers, threads, threadComments, threadsListed, threadsFull, folders, files, foldersFull, spaces, usersFull, teams, teamRequests, teamRequestsFull } from './db';
 import { z } from 'zod';
 import { ChatMessage, ObjectIdZ, Space, SpaceIdEz, SpaceIdEzZ, User } from './iso/schemas';
 
@@ -40,7 +40,7 @@ app.use(passport.session());
 // Passport local strategy
 passport.use(new LocalStrategy(async (username, password, done) => {
   try {
-    const user = await users.findOne({ username });
+    const user = await usersFull.findOne({ username });
     if (!user) {
       return done(null, false, { message: 'Incorrect username.' });
     }
@@ -61,7 +61,7 @@ passport.serializeUser((user: any, done) => {
 
 passport.deserializeUser(async (id: string, done) => {
   try {
-    const user = await users.findOne({ _id: new ObjectId(id) } ,
+    const user = await usersFull.findOne({ _id: new ObjectId(id) } ,
       {projection : {password : 0}});
     done(null, user);
   } catch (err) {
@@ -78,13 +78,68 @@ const isAuthenticated = (req: Request, res: Response, next: NextFunction): void 
   }
 };
 
-app.post('/register', async (req: Request, res: Response): Promise<void> => {
+app.post('/register', async (req: Request, res: Response) => {
   const { username, password } = req.body;
+  if (typeof username !== 'string')
+    return res.status(400).json({message : `username should be a string`})
+  if (typeof password !== 'string')
+    return res.status(400).json({message : `password should be a string`})
   const hashedPassword = await bcrypt.hash(password, 10);
   const space = await spaces.insertOne({}) ;
-  await users.insertOne({ username, password: hashedPassword , space : space.insertedId });
+  await users.insertOne({ username, password: hashedPassword , space : space.insertedId , teams : [] });
   res.json({ message: 'User registered successfully' });
 });
+
+app.post('/team/create', isAuthenticated , async (req, res) => {
+  const { teamname } = req.body;
+  if (typeof teamname !== 'string') return res.status(400).json({message : `teamname should be a string`})
+  const space = await spaces.insertOne({}) ;
+  const team = await teams.insertOne({
+    admin : req.user!._id ,
+    space : space.insertedId ,
+    teamname ,
+  }) ;
+  res.json({ message: 'Team created successfully' , _id : team.insertedId }) ;
+}) ;
+
+app.post('/team/invite', isAuthenticated , async (req, res) => {
+  const { teamId : teamIdRaw , userId : userIdRaw } = req.body ;
+  const teamIdParsed = ObjectIdZ.safeParse(teamIdRaw) ;
+  const userIdParsed = ObjectIdZ.safeParse(userIdRaw) ;
+  if (!teamIdParsed.success || !userIdParsed.success)
+    return res.status(400).json({message : `wrong id for team or user`}) ;
+  const team = await teams.findOne({_id : teamIdParsed.data}) ;
+  if (!team)
+    return res.status(400).json({message : `wrong id for team or user`}) ;
+  if (team.admin !== req.user!._id)
+    return res.status(401).json({message : `not team admin`}) ;
+  const teamRequest = await teamRequests.insertOne({
+    user : userIdParsed.data ,
+    team : teamIdParsed.data ,
+  }) ;
+  res.json({ message: 'Team request created successfully' , _id : teamRequest.insertedId }) ;
+}) ;
+
+app.post('/team/invite-accept', isAuthenticated , async (req, res) => {
+  const { teamId : teamIdRaw } = req.body ;
+  const teamIdParsed = ObjectIdZ.safeParse(teamIdRaw) ;
+  if (!teamIdParsed.success)
+    return res.status(400).json({message : `wrong id for team`}) ;
+  const request = await teamRequests.findOne({
+    team : teamIdParsed.data ,
+    user : req.user!._id ,
+  }) ;
+  if (!request)
+    return res.status(401).json({message : `no team request`}) ;
+  const response = await users.updateOne(
+    {_id : req.user!._id} ,
+    {$addToSet : {teams : teamIdParsed.data}} ,
+  ) ;
+  if (!response.acknowledged)
+    return res.status(500).json({message : `error while accepting team request`}) ;
+  res.json({message: 'Team request accepted successfully'}) ;
+}) ;
+
 
 app.post('/login', passport.authenticate('local'), (req: Request, res: Response): void => {
   res.json({ message: 'Logged in successfully', user: req.user });
@@ -101,8 +156,15 @@ app.post('/logout', (req: Request, res: Response): void => {
 });
 
 app.get('/user', isAuthenticated, (req: Request, res: Response): void => {
-  res.json({ user : { username : req.user!.username , _id : req.user!._id } });
+  res.json({ user : req.user! });
 });
+
+app.post('/dashboard', isAuthenticated, async (req , res) => {
+  console.log('dashboard' , req.user!) ;
+  const requests = await teamRequestsFull.find({user : req.user!._id}).toArray() ;
+  res.json({ requests });
+});
+
 
 app.post('/todo/view' , isAuthenticated , async (req , res) => {
   const spaceIdEzRaw = req.body.spaceId ;

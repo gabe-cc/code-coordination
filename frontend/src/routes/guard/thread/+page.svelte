@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte' ;
   import { afterNavigate, goto } from '$app/navigation' ;
-  import { getLoggedUser , loggedUser$, requireAuthentication } from '$lib/user' ;
+  import { getLoggedUser , loggedUser$ } from '$lib/user' ;
   import { ChatMessageUserZ, ChatMessageZ, ThreadFullZ, type ChatMessageUser, type ThreadFull } from '$iso/schemas' ;
   import { page } from '$app/stores' ;
   import Tree from './Tree.svelte' ;
@@ -11,10 +11,6 @@
 
   export let data : PageData ;
   let thread : ThreadFull | undefined = data.thread ;
-
-  afterNavigate(() => {
-    $requireAuthentication = true ;
-  }) ;
 
   onMount(async () => {
     if (thread === undefined) {

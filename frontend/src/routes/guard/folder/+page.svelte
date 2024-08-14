@@ -1,7 +1,7 @@
 <script lang="ts">
   import { afterUpdate, onMount } from 'svelte' ;
   import { afterNavigate, beforeNavigate, goto } from '$app/navigation' ;
-  import { getLoggedUser , loggedUser$, requireAuthentication } from '$lib/user' ;
+  import { getLoggedUser , loggedUser$ } from '$lib/user' ;
   import { page } from '$app/stores' ;
   import { FolderFullZ, type Folder, type FolderFull } from '$iso/schemas' ;
   import FolderC from './FolderC.svelte' ;
@@ -16,10 +16,6 @@
       my_folder = await getFolder({ id : $page.url.searchParams.get('id') , fetch}) ;    
     }
   })
-
-  afterNavigate(() => {
-    $requireAuthentication = true ;
-  }) ;
 </script>
 
 

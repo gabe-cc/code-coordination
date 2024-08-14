@@ -1,24 +1,45 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { beforeNavigate, goto } from "$app/navigation";
-  import { getLoggedUser, loggedUser$, requireAuthentication } from '$lib/user' ;
-  import { beforeNavigateHook as flashHook } from "$lib/flash-messages" ;
+  import { getLoggedUser, loggedUser$ } from '$lib/user' ;
+  import { beforeNavigateHook as flashHook, flashPush } from "$lib/flash-messages" ;
+    import { page } from "$app/stores";
 
-  beforeNavigate(() => {
+  beforeNavigate(async (url) => {
     flashHook() ;
-    $requireAuthentication = false ;
-  })
+    const to = url.to ;
+    // console.log('navigate' , to?.url)
+    if (to?.route.id?.startsWith(`/guard`)) {
+      // console.log('guarded' , $loggedUser$) ;
+      if ($loggedUser$ === undefined) {
+        url.cancel() ;
+        await mountPromise ;
+        // console.log('mount promised') ;
+        if ($loggedUser$ === null || $loggedUser$ === undefined) {
+          flashPush(`warning` , `${to.route.id} requires authentication`) ;
+          // console.log('goto login')
+          goto('/login') ;
+        } else {
+          goto(to.url) ;
+        }        
+      }
+    }
+  }) ;
 
-  let mounted = false ;
+  let mountRes : Function ;
+  let mountPromise = new Promise(res => mountRes = res) ;
+  // console.log(mountPromise)
   onMount(async () => {
-    getLoggedUser() ;
-    mounted = true ;
+    // console.log('get user') ;
+    await getLoggedUser() ;
+    if ($page.url.pathname.startsWith('/guard') && $loggedUser$ === null) {
+      flashPush(`warning` , `${$page.url.pathname} requires authentication`) ;
+      // console.log('goto login')
+      await goto('/login') ;
+    }
+    // console.log('got user' , $loggedUser$) ;
+    mountRes() ;
   });
-  $: if (mounted && $loggedUser$ === null && $requireAuthentication) {
-    setTimeout(() => goto('/login') , 2000) ;
-  }
-  $: console.log($loggedUser$) ;
-  $: console.log('require auth' , $requireAuthentication) ;
 </script>
 
 <nav>
@@ -27,20 +48,13 @@
     <a href="/login">Log In</a>
     <a href="/register">Register</a>
   {:else}
-    <a href="/dashboard">Dashboard</a>
-    <a href="/space?s=u-{$loggedUser$.username}">My Space</a>
+    <a href="/guard/dashboard">Dashboard</a>
     <a href="/logout">Log Out</a>
   {/if}
 </nav>
 
-{#if $requireAuthentication}
-  {#if $loggedUser$ === undefined}
-    <div>Loading user...</div>
-  {:else if $loggedUser$ === null}
-    <div>Page requires authentication. Redirecting to login...</div>
-  {:else }
-    <slot />
-  {/if}
-{:else}
+{#await mountPromise}
+  <div>Checking login...</div>
+{:then}
   <slot />
-{/if}
+{/await}

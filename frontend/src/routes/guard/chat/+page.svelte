@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte' ;
   import { afterNavigate, goto } from '$app/navigation' ;
-  import { getLoggedUser , loggedUser$, requireAuthentication } from '$lib/user' ;
+  import { getLoggedUser , loggedUser$ } from '$lib/user' ;
   import { ChatMessageUserZ, ChatMessageZ, type ChatMessageUser } from '$iso/schemas' ;
   import { PUBLIC_BACKEND_URL } from '$env/static/public' ;
   import { flashPush } from '$lib/flash-messages' ;
@@ -113,10 +113,6 @@
     const interval = setInterval(getMessages , 1000) ;
     return () => clearInterval(interval) ;
   });
-
-  afterNavigate(() => {
-    $requireAuthentication = true ;
-  }) ;
 </script>
 
 {#if messages !== undefined}

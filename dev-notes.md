@@ -136,21 +136,35 @@ npx tsx --watch .
   - [X] Remove password from Express.user
   - [X] Create space on register
   - [X] Use SafeUser in frontend/user.ts
+- [X] Protect Register route
+- [X] Guarded Routes to ensure client-side auth
 - [ ] Basic Teams
   - 1 admin per team
   - 1 user can be in multiple team
   - each team has its space
-  - [ ] DB stuff
-    - [ ] Add list of teams in req.user
+  - [X] DB stuff
+    - [X] Add list of teams in User
+    - [X] Add Collection, Indexes, etc.
+    - [X] Add Team Requests
+  - [X] Routes
+    - [X] Update User Routes
+    - [X] Create Team
+    - [X] Invite User to Team
+    - [X] Accept Invite to Team
+    - [X] Dashboard
   - [ ] Pages
-    - [ ] Update Dashboard
-      - [ ] Team Requests
-      - [ ] Joined teams + links to space
+    - [ ] Update User Dashboard
+      - [X] Space Index
+      - [X] Joined Teams + links to space
+      - [X] Accept Team Join
+      - [X] Team Requests
+      - [ ] Create Team
     - [ ] Team Dashboard
-    - [ ] Admin Team
-      - [ ] Invite user to team
-      - [ ] All users in team
-      - [ ] Remove user from team
+      - [ ] Space Index
+      - [ ] Team Requests
+      - [ ] All Users
+      - [ ] Space
+      - [ ] Admin: Invite user to team
 - [ ] Basic Search
   - [ ] Search word in all team content
 - [ ] Requests / Inbox
@@ -189,9 +203,10 @@ npx tsx --watch .
   - [ ] Refactor authorisation
 - Optim
   - [ ] Check everything for pre-loading on hover
+    - Including layout.svelte for user
 - E2E Tests
 - User
-  - [ ] User Profiles
+  - [ ] Public User Profiles
 - Todolist
   - [ ] Separate Collection for Tasks
   - [ ] Multiple Todolist per user and space
@@ -219,6 +234,10 @@ npx tsx --watch .
   - [ ] Order Folders and Files alphabetically
   - [ ] Markdown Rendering
   - [ ] Get parent of file
+- Teams
+  - [ ] Leave Teams
+  - [ ] Remove User from Team
+  - [ ] Cancel Request from Team Side
 - Requests
   - [ ] Priority from emitter
 - Good Environments
@@ -226,11 +245,16 @@ npx tsx --watch .
   - [ ] Prod Super Duper Hidden
   - [ ] Decide on Railway or VPS
   - [ ] Mongo Atlas
+- [ ] Think about permissions
 
 # V2
 - Massive Optim
   - [ ] Incremental queries?
     - How do you log all events since date T, including deletions?
+    - Append only data-structure?
+    - Never delete, only archive, and filter for last edit?
+  - [ ] Client Side Database
+  - [ ] Chunk large docs
 - User
   - [ ] Add recovery email, in case of lost password
   - [ ] Magic Link
@@ -249,8 +273,15 @@ npx tsx --watch .
   - Nb of request per second per IP
   - Size of all text fields in schemas
   - 20 teams per account
+  - 200 pending team request per team
   - limit / pagination on all queries with unbounded nb
     - threads
     - folders
     - roots
+    - team members
   - chunk files
+
+# V3
+- API
+  - [ ] Well Document API
+  - [ ] API Tokens

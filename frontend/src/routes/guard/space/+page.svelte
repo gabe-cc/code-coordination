@@ -1,7 +1,5 @@
 <script lang="ts">
   import { afterUpdate, onMount } from 'svelte' ;
-  import { afterNavigate, beforeNavigate, goto } from '$app/navigation' ;
-  import { getLoggedUser , loggedUser$, requireAuthentication } from '$lib/user' ;
   import { page } from '$app/stores' ;
   import { type Space} from '$iso/schemas' ;
   import { getSpace } from './space';
@@ -18,18 +16,14 @@
       my_space = await getSpace({ spaceId : $page.url.searchParams.get('s') , fetch}) ;    
     }
   })
-
-  afterNavigate(() => {
-    $requireAuthentication = true ;
-  }) ;
 </script>
 
 
 {#if my_space !== undefined}
-  <a href="/todo?s={spaceId}">Todolist</a>
-  <a href="/chat?s={spaceId}">Chat</a>
-  <a href="/threads?s={spaceId}">Threads</a>
-  <a href="/folders?s={spaceId}">Roots</a>
+  <a href="/guard/todo?s={spaceId}">Todolist</a>
+  <a href="/guard/chat?s={spaceId}">Chat</a>
+  <a href="/guard/threads?s={spaceId}">Threads</a>
+  <a href="/guard/folders?s={spaceId}">Roots</a>
 {:else}
   <p>Loading space...</p>
 {/if}

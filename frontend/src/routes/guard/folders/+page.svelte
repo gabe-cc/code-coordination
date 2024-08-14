@@ -1,7 +1,5 @@
 <script lang="ts">
   import { onMount } from 'svelte' ;
-  import { afterNavigate, goto } from '$app/navigation' ;
-  import { getLoggedUser , loggedUser$, requireAuthentication } from '$lib/user' ;
   import { type Folder } from '$iso/schemas' ;
   import { PUBLIC_BACKEND_URL } from '$env/static/public' ;
   import { flashPush } from '$lib/flash-messages' ;
@@ -42,10 +40,6 @@
     creating = false ;
   } ;
 
-  afterNavigate(() => {
-    $requireAuthentication = true ;
-  }) ;
-
   onMount(async () => {
     folders = await getFolders({
       spaceId : $page.url.searchParams.get('s') ,
@@ -58,7 +52,7 @@
   <h1>All Root Folders</h1>
   <ul>{#each folders as {name , _id} , i}
     <li>
-      <div><a href="/folder?s={$page.url.searchParams.get('s')}&id={_id}">{name}</a></div>
+      <div><a href="/guard/folder?s={$page.url.searchParams.get('s')}&id={_id}">{name}</a></div>
     </li>
   {/each}</ul>
   <h1>Create Root Folder</h1>

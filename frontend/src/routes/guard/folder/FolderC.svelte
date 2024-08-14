@@ -70,13 +70,13 @@
 <h1>Folder {folder.name}</h1>
 <h2>Sub Folders</h2>
 <ul>{#each folder.folder_children as folder_child}
-  <li><a href="/folder?s={$page.url.searchParams.get('s')}&id={folder_child._id}">{folder_child.name}</a></li>
+  <li><a href="/guard/folder?s={$page.url.searchParams.get('s')}&id={folder_child._id}">{folder_child.name}</a></li>
 {/each}</ul>
 <div contenteditable="plaintext-only" bind:textContent={new_child_folder_name}></div>
 <button on:click={postChildFolder} disabled={creating}>Create Sub Folder</button>
 <h2>Files</h2>
 <ul>{#each folder.file_children as file_child}
-  <li><a href="/file?s={$page.url.searchParams.get('s')}&id={file_child._id}">{file_child.name}</a></li>
+  <li><a href="/guard/file?s={$page.url.searchParams.get('s')}&id={file_child._id}">{file_child.name}</a></li>
 {/each}</ul>
 <div contenteditable="plaintext-only" bind:textContent={new_child_file_name}></div>
 <button on:click={postChildFile} disabled={creating}>Create File</button>

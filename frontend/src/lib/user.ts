@@ -1,11 +1,10 @@
 import { get, writable } from "svelte/store";
 import { PUBLIC_BACKEND_URL } from '$env/static/public' ;
-import type { SafeUser } from "$iso/schemas";
+import type { SafeUserFull } from "$iso/schemas";
 
-export type LoggedUser = null | undefined | SafeUser // null -> no user, undefined -> loading
+export type LoggedUser = null | undefined | SafeUserFull // null -> no user, undefined -> loading
 
 export let loggedUser$ = writable<LoggedUser>(undefined) ;
-export const requireAuthentication = writable<boolean>(false) ;
 
 export const getLoggedUser = async () : Promise<LoggedUser> => {
   const loggedUser = get(loggedUser$) ;
