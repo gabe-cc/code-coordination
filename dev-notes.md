@@ -132,8 +132,10 @@ npx tsx --watch .
     - [X] Get Space from user name
     - [X] Update all routes with Space
     - [X] Check for permission whenever Space
-- [ ] Fix req.user and User
-  - [ ] Remove password from req.user
+- [X] Fix req.user and User
+  - [X] Remove password from Express.user
+  - [X] Create space on register
+  - [X] Use SafeUser in frontend/user.ts
 - [ ] Basic Teams
   - 1 admin per team
   - 1 user can be in multiple team

@@ -10,7 +10,6 @@ declare global {
     interface User {
       _id : ObjectId ;
       username : string ;
-      password : string ;
       space : ObjectId;
     }
   }
@@ -25,6 +24,7 @@ export interface User {
 export interface SafeUser {
   _id : ObjectId ;
   username : string ;
+  space : ObjectId;
 }
 
 export const ItemZ = z.string() ;

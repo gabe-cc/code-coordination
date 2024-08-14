@@ -81,7 +81,8 @@ const isAuthenticated = (req: Request, res: Response, next: NextFunction): void 
 app.post('/register', async (req: Request, res: Response): Promise<void> => {
   const { username, password } = req.body;
   const hashedPassword = await bcrypt.hash(password, 10);
-  await users.insertOne({ username, password: hashedPassword });
+  const space = await spaces.insertOne({}) ;
+  await users.insertOne({ username, password: hashedPassword , space : space.insertedId });
   res.json({ message: 'User registered successfully' });
 });
 

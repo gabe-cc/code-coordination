@@ -1,11 +1,8 @@
 import { get, writable } from "svelte/store";
 import { PUBLIC_BACKEND_URL } from '$env/static/public' ;
-import type { ObjectId } from "$iso/bson-objectid";
+import type { SafeUser } from "$iso/schemas";
 
-export type LoggedUser = null | undefined | {
-  username : string ,
-  _id : ObjectId ,
-} // null -> no user, undefined -> loading
+export type LoggedUser = null | undefined | SafeUser // null -> no user, undefined -> loading
 
 export let loggedUser$ = writable<LoggedUser>(undefined) ;
 export const requireAuthentication = writable<boolean>(false) ;
