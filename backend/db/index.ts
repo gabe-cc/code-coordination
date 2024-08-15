@@ -64,6 +64,7 @@ export const main = async () => {
       db.dropCollection('folders-full') ,
       db.dropCollection('users-full') ,
       // teams.dropIndex('teamname_1') ,
+      // users.dropIndex('user_id_1') ,
     ]) ;
   }
   console.log(`Connecting to REDIS and MongoDB`) ;

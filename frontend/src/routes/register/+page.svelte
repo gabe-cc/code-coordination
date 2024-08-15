@@ -1,6 +1,7 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { PUBLIC_BACKEND_URL } from '$env/static/public' ;
+    import { login } from '$lib/user';
 
   let username = '';
   let password = '';
@@ -17,11 +18,7 @@
 
     if (response.ok) {
       // console.log(`Logging In`) ;
-      const logResponse = await fetch(`${PUBLIC_BACKEND_URL}/register` , {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })      
-      }) ;
+      const logResponse = await login(username , password) ;
       if (logResponse.ok) {
         goto('/') ;
       } else {

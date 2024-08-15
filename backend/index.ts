@@ -86,7 +86,9 @@ app.post('/register', async (req: Request, res: Response) => {
     return res.status(400).json({message : `password should be a string`})
   const hashedPassword = await bcrypt.hash(password, 10);
   const space = await spaces.insertOne({}) ;
-  await users.insertOne({ username, password: hashedPassword , space : space.insertedId , teams : [] });
+  const allUsers = await users.find({}).toArray() ;
+  console.log('users' , allUsers) ;
+  await users.insertOne({ username, password: hashedPassword , space : space.insertedId , teams : [] }) ;
   res.json({ message: 'User registered successfully' });
 });
 
@@ -99,22 +101,81 @@ app.post('/team/create', isAuthenticated , async (req, res) => {
     space : space.insertedId ,
     teamname ,
   }) ;
+  users.updateOne(
+    {_id : req.user!._id} ,
+    {$addToSet : {teams : team.insertedId}} ,
+  ) ;
   res.json({ message: 'Team created successfully' , _id : team.insertedId }) ;
 }) ;
 
+app.post('/team/dashboard', isAuthenticated , async (req, res) => {
+  const { teamname } = req.body ;
+  if (typeof teamname !== 'string')
+    return res.status(400).json({message : `wrong id for team`}) ;
+  const teamDashboard = await teams.aggregate([
+    { $match : {
+      teamname ,
+    } },
+    { $lookup : {
+      from: "users",
+      localField: "admin",
+      foreignField: "_id",
+      as: "admin" ,
+      pipeline: [
+        {$project : { password : 0 }} ,
+      ] ,
+    } },
+    { $unwind : '$admin' } ,
+    { $lookup : {
+      from: "team-requests",
+      localField: "_id",
+      foreignField: "team",
+      as: "requests" ,
+      pipeline: [
+        { $lookup : {
+          from: "users",
+          localField: "user",
+          foreignField: "_id",
+          as: "user" ,
+          pipeline: [
+            { $project : { password : 0 } } ,      
+          ] ,
+        }} ,
+        { $unwind: '$user'} ,
+      ] ,
+    } },
+    { $lookup : {
+      from: "users",
+      localField: "_id",
+      foreignField: "teams",
+      as: "members" ,
+      pipeline: [
+        {$project : { password : 0 }} ,
+      ] ,
+    } },
+  ]).toArray() ;
+  console.log('team dashboard' , teamname , teamDashboard[0]) ;
+  // console.log('team dashboard' , teamDashboard) ;
+  res.json({ teamDashboard : teamDashboard[0] }) ;
+}) ;
+
 app.post('/team/invite', isAuthenticated , async (req, res) => {
-  const { teamId : teamIdRaw , userId : userIdRaw } = req.body ;
+  const { teamId : teamIdRaw , username } = req.body ;
   const teamIdParsed = ObjectIdZ.safeParse(teamIdRaw) ;
-  const userIdParsed = ObjectIdZ.safeParse(userIdRaw) ;
-  if (!teamIdParsed.success || !userIdParsed.success)
+  if (!teamIdParsed.success || typeof username !== 'string')
     return res.status(400).json({message : `wrong id for team or user`}) ;
-  const team = await teams.findOne({_id : teamIdParsed.data}) ;
+  const [ team , user ] = await Promise.all([
+    teams.findOne({_id : teamIdParsed.data}) ,
+    users.findOne({username}) ,
+  ]) ;
   if (!team)
     return res.status(400).json({message : `wrong id for team or user`}) ;
-  if (team.admin !== req.user!._id)
+  if (!team.admin.equals(req.user!._id))
     return res.status(401).json({message : `not team admin`}) ;
+  if (!user)
+    return res.status(400).json({message : `wrong id for team or user`}) ;
   const teamRequest = await teamRequests.insertOne({
-    user : userIdParsed.data ,
+    user : user._id ,
     team : teamIdParsed.data ,
   }) ;
   res.json({ message: 'Team request created successfully' , _id : teamRequest.insertedId }) ;
@@ -137,6 +198,9 @@ app.post('/team/invite-accept', isAuthenticated , async (req, res) => {
   ) ;
   if (!response.acknowledged)
     return res.status(500).json({message : `error while accepting team request`}) ;
+  const response2 = await teamRequests.deleteOne({_id : request._id}) ;
+  if (!response2.acknowledged)
+    return res.status(500).json({message : `error while flushing team request`}) ;
   res.json({message: 'Team request accepted successfully'}) ;
 }) ;
 
@@ -160,7 +224,7 @@ app.get('/user', isAuthenticated, (req: Request, res: Response): void => {
 });
 
 app.post('/dashboard', isAuthenticated, async (req , res) => {
-  console.log('dashboard' , req.user!) ;
+  // console.log('dashboard' , req.user!) ;
   const requests = await teamRequestsFull.find({user : req.user!._id}).toArray() ;
   res.json({ requests });
 });

@@ -33,7 +33,7 @@
       flashPush('error' , 'failed to accept invite') ;
       return ;
     }
-    goto(`/team?t=${teamRequest.team.teamname}`) ;
+    goto(`/guard/team?t=${teamRequest.team.teamname}`) ;
   } ;
 
   export let teamName = '' ;
@@ -82,7 +82,7 @@
         <a href="/guard/team?t={request.team.teamname}">{request.team.teamname}</a>    
       </div>
       <div>
-        <button on:click={() => acceptInvite(request)}></button>
+        <button on:click={() => acceptInvite(request)}>Accept invite</button>
       </div>
     </li>
   {/each}</ul>

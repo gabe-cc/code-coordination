@@ -197,6 +197,30 @@ export const TeamZ = z.object({
 
 export type Team = z.infer<typeof TeamZ> ;
 
+export const TeamDashboardZ = z.object({
+  _id : ObjectIdZ ,
+  admin : z.object({
+    _id : ObjectIdZ ,
+    username : z.string() ,
+  }) ,
+  space : ObjectIdZ ,
+  teamname : z.string() ,
+  requests : z.array(z.object({
+    _id : ObjectIdZ ,
+    team : ObjectIdZ ,
+    user : z.object({
+      _id : ObjectIdZ ,
+      username : z.string() ,  
+    })
+  })) ,
+  members : z.array(z.object({
+    _id : ObjectIdZ ,
+    username : z.string() ,
+  })) ,
+}) ;
+
+export type TeamDashboard = z.infer<typeof TeamDashboardZ> ;
+
 export const TeamRequestZ = z.object({
   team : ObjectIdZ ,
   user : ObjectIdZ ,

@@ -34,10 +34,11 @@ export const login = async (username : string , password : string) => {
     credentials: 'include' ,
   });
   const json = await response.json() ;
-  loggedUser$.set(json.user) ;
   if (response.ok) {
-    return { ok : true  as const }
+    loggedUser$.set(json.user) ;
+    return { ok : true as const }
   } else {
+    loggedUser$.set(null) ;
     return { ok : false as const , error : json.message } ;
   }
 }

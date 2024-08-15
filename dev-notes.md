@@ -138,7 +138,7 @@ npx tsx --watch .
   - [X] Use SafeUser in frontend/user.ts
 - [X] Protect Register route
 - [X] Guarded Routes to ensure client-side auth
-- [ ] Basic Teams
+- [X] Basic Teams
   - 1 admin per team
   - 1 user can be in multiple team
   - each team has its space
@@ -152,24 +152,26 @@ npx tsx --watch .
     - [X] Invite User to Team
     - [X] Accept Invite to Team
     - [X] Dashboard
-  - [ ] Pages
-    - [ ] Update User Dashboard
+    - [X] Team Dashboard
+  - [X] Pages
+    - [X] Update User Dashboard
       - [X] Space Index
       - [X] Joined Teams + links to space
       - [X] Accept Team Join
       - [X] Team Requests
-      - [ ] Create Team
-    - [ ] Team Dashboard
-      - [ ] Space Index
-      - [ ] Team Requests
-      - [ ] All Users
-      - [ ] Space
-      - [ ] Admin: Invite user to team
+      - [X] Create Team
+    - [X] Team Dashboard
+      - [X] Space Index
+      - [X] All Users
+      - [X] Team Requests
+      - [X] Admin: Invite user to team
 - [ ] Basic Search
   - [ ] Search word in all team content
 - [ ] Requests / Inbox
 - [ ] Go over text in all +page.svelte and see if it's correct/coherent
 - [ ] Remove debug text in +page.svelte
+- [ ] Deal with MongoDB index error
+  - Register
 - [ ] Add one line of comment to all foreign keys in schemas
 - [ ] Dirty Railway Deploy
   - [ ] Remove Bun Garbagino
@@ -183,7 +185,8 @@ npx tsx --watch .
   - Homogenise route names (create/view, singular/plural)
   - Zod Validators for inputs instead of ad-hoc
   - Typed Routes
-- [ ] Form Builder
+- [ ] Refactor Forms
+  - Ensure all things disabled while form is running
 - [ ] Display Frontend Flash Messages
   - [ ] Compactify all identical messages (just a counter)
 - Styling
