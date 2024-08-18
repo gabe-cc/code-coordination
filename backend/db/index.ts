@@ -3,13 +3,15 @@ dotenv.config();
 export * as Schemas from '../iso/schemas' ;
 import { createClient } from 'redis';
 import { MongoClient } from 'mongodb';
-import { ChatMessage, ChatMessageUser, File, Folder, FolderFull, Space, Team, TeamRequest, TeamRequestFull, TeamRequestFullZ, Thread, ThreadComment, ThreadFull, ThreadListed, Todolist, User, UserFull } from '../iso/schemas';
+import { ChatMessage, ChatMessageUser, computeTextChunks, File, FileChunk, Folder, FolderFull, Space, Team, TeamRequest, TeamRequestFull, TeamRequestFullZ, Thread, ThreadChunk, ThreadComment, ThreadCommentChunk, ThreadFull, ThreadListed, Todolist, User, UserFull } from '../iso/schemas';
 
 export const redisClient = createClient({
   url: process.env.REDIS_URL
 });
 
-export const mongoClient = new MongoClient(process.env.MONGO_URL!);
+console.log('MONGO_URL' , process.env.MONGO_URL!) ;
+export const mongoClient = new MongoClient(process.env.MONGO_URL! , {
+});
 export const db = mongoClient.db(`main`) ;
 
 export const users = db.collection<User>('users') ;
@@ -18,12 +20,16 @@ export const todolists = db.collection<Todolist>('todolists') ;
 export const chatMessages = db.collection<ChatMessage>('chat-messages') ;
 export const chatMessagesUsers = db.collection<ChatMessageUser>('chat-messages-users') ;
 export const threads = db.collection<Thread>('threads') ;
+export const threadChunks = db.collection<ThreadChunk>('thread-chunks') ;
 export const threadComments = db.collection<ThreadComment>('thread-comments') ;
+export const threadCommentChunks = db.collection<ThreadCommentChunk>('thread-comment-chunks') ;
 export const threadsListed = db.collection<Thread>('threads-listed') ;
 export const threadsFull = db.collection<ThreadFull>('threads-full') ;
 export const folders = db.collection<Folder>('folders') ;
 export const foldersFull = db.collection<FolderFull>('folders-full') ;
 export const files = db.collection<File>('files') ;
+export const fileChunks = db.collection<FileChunk>('file-chunks') ;
+export const fileChangeToken = db.collection<{}>('file-change-token') ;
 export const spaces = db.collection<Space>('spaces') ;
 export const teams = db.collection<Team>('teams') ;
 export const teamRequests = db.collection<TeamRequest>('team-requests') ;
@@ -55,7 +61,69 @@ export const teamRequestsFull = db.collection<TeamRequestFull>('team-requests-fu
 //   }
 // }
 
+
+export const fileChangeStream = async () => {
+  for await (let change of files.watch([
+    { $match: { 'operationType': { $in: ['insert', 'update'] } } }
+  ] , {
+    fullDocument : 'updateLookup' ,
+  })) {
+    if (change.operationType === 'insert' || change.operationType === 'update') {
+      const doc = change.fullDocument! ;
+      const file = change.documentKey._id ;
+      const chunks = computeTextChunks(doc.text).map(x => ({...x , file, space:doc.space})) ;
+      await fileChunks.deleteMany({file}) ;
+      await fileChunks.insertMany(chunks) ;
+    } else {
+      throw new Error(`impossible`) ;
+    }
+  }
+} ;
+
+export const threadChangeStream = async () => {
+  for await (let change of threads.watch([
+    { $match: { 'operationType': { $in: ['insert', 'update'] } } }
+  ] , {
+    fullDocument : 'updateLookup' ,
+  })) {
+    if (change.operationType === 'insert' || change.operationType === 'update') {
+      const doc = change.fullDocument! ;
+      const thread = change.documentKey._id ;
+      const chunks = computeTextChunks(doc.text).map(x => ({...x , thread})) ;
+      await threadChunks.deleteMany({thread}) ;
+      await threadChunks.insertMany(chunks) ;
+    } else {
+      throw new Error(`impossible`) ;
+    }
+  }
+} ;
+
+export const threadCommentChangeStream = async () => {
+  for await (let change of threadComments.watch([
+    { $match: { 'operationType': { $in: ['insert', 'update'] } } }
+  ] , {
+    fullDocument : 'updateLookup' ,
+  })) {
+    if (change.operationType === 'insert' || change.operationType === 'update') {
+      const doc = change.fullDocument! ;
+      const thread_comment = change.documentKey._id ;
+      const chunks = computeTextChunks(doc.text).map(x => ({...x , thread_comment})) ;
+      await threadCommentChunks.deleteMany({thread_comment}) ;
+      await threadCommentChunks.insertMany(chunks) ;
+    } else {
+      throw new Error(`impossible`) ;
+    }
+  }
+} ;
+
+
 export const main = async () => {
+  console.log(`Connecting to REDIS and MongoDB`) ;
+  await Promise.all([
+    redisClient.connect() ,
+    mongoClient.connect() ,
+  ]) ;
+  console.log(`Connected to REDIS and MongoDB`) ;
   if (process.env.DEV === 'true') {
     await Promise.all([
       db.dropCollection('chat-messages-users') ,
@@ -67,12 +135,6 @@ export const main = async () => {
       // users.dropIndex('user_id_1') ,
     ]) ;
   }
-  console.log(`Connecting to REDIS and MongoDB`) ;
-  await Promise.all([
-    redisClient.connect() ,
-    mongoClient.connect() ,
-  ]) ;
-  console.log(`Connected to REDIS and MongoDB`) ;
   console.log(`Setting up indexes`) ;
   // await printAllIndexes() ;
   await Promise.all([
@@ -81,13 +143,28 @@ export const main = async () => {
     todolists.createIndex({ space : 1 } , { unique : true }) ,
     chatMessages.createIndex({ space : 1 , date : 1 }) ,
     chatMessages.createIndex({ space : 1 , author : 1 }) ,
+    chatMessages.createIndex({ space : 1 , words34 : 1 }) ,
+    chatMessages.createIndex({ space : 1 , skip5grams : 1 }) ,
     threads.createIndex({ space : 1 , date : 1 }) ,
     threads.createIndex({ space : 1 }) ,
+    threadChunks.createIndex({ thread : 1 }) ,
+    threadChunks.createIndex({ space : 1 , words34 : 1 }) ,
+    threadChunks.createIndex({ space : 1 , skip5grams : 1 }) ,
     threadComments.createIndex({ thread_root : 1 }) ,
     threadComments.createIndex({ thread_root : 1 , date : 1 }) ,
+    threadCommentChunks.createIndex({ thread_comment : 1 }) ,
+    threadCommentChunks.createIndex({ space : 1 , words34 : 1 }) ,
+    threadCommentChunks.createIndex({ space : 1 , skip5grams : 1 }) ,
     folders.createIndex({ parent : 1 }) ,
     folders.createIndex({ space : 1 , parent : 1 }) , // important to quickly find top-level folders
+    folders.createIndex({ space : 1 , 'name.words34' : 1 }) ,
+    folders.createIndex({ space : 1 , 'name.skip5grams' : 1 }) ,
     files.createIndex({ parent : 1 }) ,
+    files.createIndex({ space : 1 , 'name.words34' : 1 }) ,
+    files.createIndex({ space : 1 , 'name.skip5grams' : 1 }) ,
+    fileChunks.createIndex({ file : 1 }) ,
+    fileChunks.createIndex({ space : 1 , words34 : 1 }) ,
+    fileChunks.createIndex({ space : 1 , skip5grams : 1 }) ,
     spaces.createIndex({ owner : 1 , owner_type : 1 }) ,
     teams.createIndex({ teamname : 1 } , { unique : true }) ,
     teamRequests.createIndex({ team : 1 }) ,
@@ -236,4 +313,9 @@ export const main = async () => {
     })
   ]) ;
   console.log(`Views Created`) ;
+  console.log(`Set Up Change Streams`) ;
+  fileChangeStream() ;
+  threadChangeStream() ;
+  threadCommentChangeStream() ;
+  console.log(`Change Streams Set Up`) ;
 } ;

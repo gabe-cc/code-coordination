@@ -40,15 +40,39 @@
     // console.log('got user' , $loggedUser$) ;
     mountRes() ;
   });
+
+  let searchText = '' ;
+  const doSearch = () => {
+    if (searchText === '') return ;
+  } ;
 </script>
 
-<nav>
+<nav
+  style="
+    display : flex ;
+    flex-direction : horizontal ;
+  "
+>
   <a href="/">Home</a>
   {#if $loggedUser$ === undefined || $loggedUser$ === null}
     <a href="/login">Log In</a>
     <a href="/register">Register</a>
   {:else}
     <a href="/guard/dashboard">Dashboard</a>
+    <div
+      style="
+        display : flex ;
+      "
+    >
+      <div
+        contenteditable="plaintext-only"
+        style="
+          min-width : 80px ;
+        "
+        bind:textContent={searchText}
+      ></div>
+      <button on:click={doSearch} disabled={searchText === ''}>Search</button>
+    </div>
     <a href="/logout">Log Out</a>
   {/if}
 </nav>

@@ -166,15 +166,38 @@ npx tsx --watch .
       - [X] Team Requests
       - [X] Admin: Invite user to team
 - [ ] Basic Search
-  - [ ] Search word in all team content
+  - [X] Chunk Text Documents by line
+  - [X] Chunk Threads and Comments by line
+  - [X] Compute index documents
+  - [X] Automate Chunk Creation
+  - [X] Special Schemas for SearchIndex and SearchChunk
+  - [X] Add index fields to collections
+    - [X] Chat Messages
+    - [X] File Name
+    - [X] Folder Name
+  - [X] Index the fields, update existing indexes
+  - [X] Connect to REPLICAs
+    - [X] Locally, connect only to primary
+  - Routes
+    - [X] Update Routes to support indexes
+    - [X] Search word in all team content
+  - Page
+    - [ ] Search Bar at top
+    - [ ] Search Results Page
 - [ ] Requests / Inbox
 - [ ] Go over text in all +page.svelte and see if it's correct/coherent
 - [ ] Remove debug text in +page.svelte
+- [ ] Remove console.log
 - [ ] Deal with MongoDB index error
-  - Register
+  - Register page
+- [ ] Check history behaviour with goto('/')
+  - Doesn't add to history, and should
 - [ ] Add one line of comment to all foreign keys in schemas
 - [ ] Dirty Railway Deploy
   - [ ] Remove Bun Garbagino
+  - [ ] Staging vs Prod Environments
+  - [ ] Kill servers when not used
+  - [ ] On server, connect to all replicas
 
 # V1
 - Re-do Routes
@@ -185,8 +208,13 @@ npx tsx --watch .
   - Homogenise route names (create/view, singular/plural)
   - Zod Validators for inputs instead of ad-hoc
   - Typed Routes
+  - Auth Routes
+    - Error on wrong login
 - [ ] Refactor Forms
   - Ensure all things disabled while form is running
+- [ ] Refactor db.ts
+  - [ ] Split across files
+  - [ ] Move all db access functions there
 - [ ] Display Frontend Flash Messages
   - [ ] Compactify all identical messages (just a counter)
 - Styling
@@ -207,7 +235,11 @@ npx tsx --watch .
 - Optim
   - [ ] Check everything for pre-loading on hover
     - Including layout.svelte for user
-- E2E Tests
+- Tests
+  - Unit Tests
+    - n-grams matching
+  - API Tests
+  - E2E Tests
 - User
   - [ ] Public User Profiles
 - Todolist
@@ -231,6 +263,9 @@ npx tsx --watch .
   - [ ] Web Socket
 - File Tree
   - [ ] Basic Real-Time Doc Editing
+    - Maintain Real-Time Doc in server memory
+    - Debounce updates to DB
+    - Max debounce time 1 min
   - [ ] Trash and delete
   - [ ] History
   - [ ] Add date to folders and files
@@ -251,6 +286,8 @@ npx tsx --watch .
 - [ ] Think about permissions
 
 # V2
+- [ ] MongoDB replication
+- [ ] Non-indexed Files
 - Massive Optim
   - [ ] Incremental queries?
     - How do you log all events since date T, including deletions?
@@ -258,6 +295,7 @@ npx tsx --watch .
     - Never delete, only archive, and filter for last edit?
   - [ ] Client Side Database
   - [ ] Chunk large docs
+  - [ ] Hashed indexes instead of sorted ones
 - User
   - [ ] Add recovery email, in case of lost password
   - [ ] Magic Link
@@ -275,6 +313,8 @@ npx tsx --watch .
   - Username and Teamname format (URL friendly)
   - Nb of request per second per IP
   - Size of all text fields in schemas
+    - chat messages
+    - threads and comments
   - 20 teams per account
   - 200 pending team request per team
   - limit / pagination on all queries with unbounded nb
@@ -283,8 +323,16 @@ npx tsx --watch .
     - roots
     - team members
   - chunk files
+  - size limit per space
 
 # V3
 - API
   - [ ] Well Document API
   - [ ] API Tokens
+- Export
+  - [ ] Export everything as a JSON
+- Sharding
+  - [ ] Sharding across spaces
+- Errors
+  - [ ] Fail on all errors and warnings in dev
+  - [ ] Recover as much as possible in prod

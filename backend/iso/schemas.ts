@@ -5,6 +5,36 @@ export const ObjectIdZ = z.custom<ObjectId>((val) => {
   return val instanceof ObjectId || (typeof val === 'string' && ObjectId.isValid(val));
 }).transform(x => typeof x === 'string' ? ObjectId.createFromHexString(x) : x);
 
+export const computeSkipGrams = (x : string) => {
+  const results : Array<string> = [] ;
+  for (let i = 0 ; i < x.length - 5; i++) {
+    results.push(x.slice(i, i + 5));
+  }
+  for (let i = 0 ; i < x.length - 6 ; i++) {
+    for (let skip = 0 ; skip < 5 ; skip++) {
+      const skipGram = x.slice(i, i + skip) + x.slice(i + skip + 1, i + skip + 5) ;
+      results.push(skipGram);
+    }
+  }
+  return results ;
+} ;
+
+export const computeTextIndex = (text : string) => {
+  const tokens = text.split(/\s+/).map(x => x.toLowerCase()) ;
+  const words34 = tokens.filter(x => x.length === 3 || x.length === 4) ;
+  const skip5grams = tokens.filter(x => x.length >= 5).flatMap(computeSkipGrams) ;
+  return { words34 , skip5grams } ;
+} ;
+
+export const computeTextChunks = (text : string) => {
+  const chunkTexts = text.split('\n') ;
+  const chunks = chunkTexts.map((line_text , line_nb) => {
+    const index = computeTextIndex(line_text) ;
+    return { line_nb , line_text , ...index } ;
+  }) ;
+  return chunks ;
+} ;
+
 declare global {
   namespace Express {
     interface User {
@@ -37,6 +67,16 @@ export type SafeUserFull = {
   teams : Array<Team> ;
 }
 
+export const SearchIndexZ = z.object({
+  words34 : z.array(z.string()) ,
+  skip5grams : z.array(z.string()) ,
+}) ;
+
+export const SearchChunkZ = z.object({
+  line_nb : z.number() ,
+  line_text : z.string() ,
+}).merge(SearchIndexZ) ;
+
 export const ItemZ = z.string() ;
 export type Item = z.infer<typeof ItemZ> ;
 
@@ -53,7 +93,7 @@ export const ChatMessageZ = z.object({
   date : z.coerce.date() ,
   text : z.string() ,
   space : ObjectIdZ ,
-}) ;
+}).merge(SearchIndexZ) ;
 export type ChatMessage = z.infer<typeof ChatMessageZ> ;
 
 export const ChatMessageUserZ = z.object({
@@ -109,6 +149,13 @@ export const ThreadCommentFullZ = z.object({
 }) ;
 export type ThreadCommentFull = z.infer<typeof ThreadCommentFullZ> ;
 
+export const ThreadCommentChunkZ = z.object({
+  thread_comment : ObjectIdZ ,
+  space : ObjectIdZ ,
+}).merge(SearchChunkZ) ;
+export type ThreadCommentChunk = z.infer<typeof ThreadCommentChunkZ> ;
+
+
 export const ThreadFullZ = z.object({
   author : z.object({
     _id : ObjectIdZ ,
@@ -123,9 +170,18 @@ export const ThreadFullZ = z.object({
 })
 export type ThreadFull = z.infer<typeof ThreadFullZ> ;
 
+export const ThreadChunkZ = z.object({
+  thread : ObjectIdZ ,
+  space : ObjectIdZ ,
+}).merge(SearchChunkZ) ;
+export type ThreadChunk = z.infer<typeof ThreadChunkZ> ;
+
+
 export const FolderZ = z.object({
   owner : ObjectIdZ ,
-  name : z.string() ,
+  name : z.object({
+    text : z.string() ,
+  }).merge(SearchIndexZ) ,
   parent : ObjectIdZ.nullable() , // null means top-level
 })
 export type Folder = z.infer<typeof FolderZ> ;
@@ -143,16 +199,24 @@ export const FolderFullZ = z.object({
     name : z.string() ,
   })) ,
   space : ObjectIdZ ,
-})
+}) ;
 export type FolderFull = z.infer<typeof FolderFullZ> ;
 
 export const FileZ = z.object({
-  name : z.string() ,
+  name : z.object({
+    text : z.string() ,
+  }).merge(SearchIndexZ) ,
   text : z.string() ,
   parent : ObjectIdZ ,
   space : ObjectIdZ ,
 }) ;
 export type File = z.infer<typeof FileZ> ;
+
+export const FileChunkZ = z.object({
+  file : ObjectIdZ ,
+  space : ObjectIdZ ,
+}).merge(SearchChunkZ)
+export type FileChunk = z.infer<typeof FileChunkZ> ;
 
 export const FileUserZ = FileZ.extend({
   _id : ObjectIdZ ,

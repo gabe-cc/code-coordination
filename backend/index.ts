@@ -9,7 +9,7 @@ import bcrypt from 'bcrypt';
 import cors from 'cors';
 import passport from 'passport';
 import { Strategy as LocalStrategy } from 'passport-local';
-import { redisClient, users, main as dbMain, todolists, Schemas, chatMessages, chatMessagesUsers, threads, threadComments, threadsListed, threadsFull, folders, files, foldersFull, spaces, usersFull, teams, teamRequests, teamRequestsFull } from './db';
+import { redisClient, users, main as dbMain, todolists, Schemas, chatMessages, chatMessagesUsers, threads, threadComments, threadsListed, threadsFull, folders, files, foldersFull, spaces, usersFull, teams, teamRequests, teamRequestsFull, computeTextIndex, computeSkipGrams, fileChunks, threadChunks, threadCommentChunks } from './db';
 import { z } from 'zod';
 import { ChatMessage, ObjectIdZ, Space, SpaceIdEz, SpaceIdEzZ, User } from './iso/schemas';
 
@@ -91,6 +91,82 @@ app.post('/register', async (req: Request, res: Response) => {
   await users.insertOne({ username, password: hashedPassword , space : space.insertedId , teams : [] }) ;
   res.json({ message: 'User registered successfully' });
 });
+
+app.post(`/search` , isAuthenticated , async (req , res) => {
+  const { words : wordsRaw , space : spaceRaw } = req.body ;
+  const spaceParsed = ObjectIdZ.safeParse(spaceRaw) ;
+  if (!spaceParsed.success)
+    return res.status(400).json({message : `wrong space id`}) ;
+  const space = spaceParsed.data ;
+  const wordsParsed = z.array(z.string()).safeParse(wordsRaw) ;
+  if (!wordsParsed.success)
+    return res.status(400).json({message : `wrong words for search`}) ;
+  const words = wordsParsed.data ;
+  if (words.filter(x => x.length >= 3).length === 0)
+    return res.status(400).json({message : `no word big enough for search`}) ;
+  const words34 = {$all : words.filter(x => x.length === 3 || x.length === 4)} ;
+  const skip5grams = {$all : words.flatMap(computeSkipGrams)} ;
+  const searchQuery = { words34 , skip5grams , space } ;
+  const [
+    chatMessagesD ,
+    filesD ,
+    fileChunksD ,
+    foldersD ,
+    threadChunksD ,
+    threadCommentChunksD ,
+  ] = await Promise.all([
+    chatMessages.find(searchQuery).limit(20).toArray() ,
+    files.find().limit(20).toArray() ,
+    fileChunks.aggregate([
+      {$match : {space , words34 , skip5grams}} ,
+      {$limit : 10} ,
+      {$lookup : {
+        from: "files",
+        localField: "file",
+        foreignField: "_id",
+        as: "file" ,
+        pipeline : [
+          {$project : {text : 0}} ,
+        ] ,
+      }},
+    ]) ,
+    folders.find({space , name : {words34 , skip5grams}}).limit(20).toArray() ,
+    threadChunks.aggregate([
+      {$match : {space , words34 , skip5grams}} ,
+      {$limit : 10} ,
+      {$lookup : {
+        from: "threads",
+        localField: "thread",
+        foreignField: "_id",
+        as: "thread" ,
+        pipeline : [
+          {$project : {text : 0}} ,
+        ] ,
+      }},
+    ]) ,
+    threadCommentChunks.aggregate([
+      {$match : {space , words34 , skip5grams}} ,
+      {$limit : 10} ,
+      {$lookup : {
+        from: "thread-comments",
+        localField: "thread_comment",
+        foreignField: "_id",
+        as: "thread_comment" ,
+        pipeline : [
+          {$project : {text : 0}} ,
+        ] ,
+      }},
+    ]) ,
+  ]) ;
+  return res.json({
+    chatMessages : chatMessagesD ,
+    files : filesD ,
+    fileChunks : fileChunksD ,
+    folders : foldersD ,
+    threadChunks : threadChunksD ,
+    threadCommentChunks : threadCommentChunksD ,
+  }) ;
+}) ;
 
 app.post('/team/create', isAuthenticated , async (req, res) => {
   const { teamname } = req.body;
@@ -294,6 +370,7 @@ app.post('/chat/send-message' , isAuthenticated , async (req , res) => {
     author : req.user!._id ,
     date : new Date() ,
     text , space : spaceId ,
+    ...computeTextIndex(text) ,
   }
   const response = await chatMessages.insertOne(message) ;
   // console.log('chat/send' , message) ;
@@ -419,7 +496,8 @@ app.post(`/folder/create` , isAuthenticated , async (req , res) => {
   }
   const new_folder = {
     owner : req.user!._id ,
-    name , parent , space : spaceId ,
+    name : { text : name , ...computeTextIndex(name) } ,
+    parent , space : spaceId ,
   } ;
   // console.log(`Creating new folder` , new_folder) ;
   const response = await folders.insertOne(new_folder) ;
@@ -493,7 +571,9 @@ app.post(`/folder/edit` , isAuthenticated , async (req, res) => {
     space : {$in : userAllowedSpaces(req.user!) } ,
   } , {$set:{
     ...(new_parent !== undefined ? { parent : new_parent } : {}) ,
-    ...(new_name !== undefined ? { name : new_name } : {}) ,
+    ...(new_name !== undefined ? {
+      name : { text : new_name , ...computeTextIndex(new_name) } ,
+    } : {}) ,
   }}) ;
   if (response === null) return res.status(500).json({message : `Error while editing`}) ;
   return res.json({ok : true}) ;
@@ -524,7 +604,8 @@ app.post(`/file/create` , isAuthenticated , async (req , res) => {
   if (!spaceId)
       return res.status(400).json({message : `Wrong space id`}) ;
   const response = await files.insertOne({
-    name , parent , text , space : spaceId ,
+    name : { text : name , ...computeTextIndex(name) } ,
+    parent , text , space : spaceId ,
   }) ;
   if (response.acknowledged) {
     return res.json({ ok : true}) ;
@@ -579,7 +660,9 @@ app.post(`/file/edit` , isAuthenticated , async (req, res) => {
   // console.log('file/edit' , query , new_text , new_name) ;
   const response = await files.findOneAndUpdate(query , {$set:{
     ...(new_text !== undefined ? { text : new_text } : {}) ,
-    ...(new_name !== undefined ? { name : new_name } : {}) ,
+    ...(new_name !== undefined ? {
+      name : { text : new_name , ...computeTextIndex(new_name) } ,
+    } : {}) ,
   }}) ;
   // const debug = await files.findOne({_id : parsed.data}) ;
   // console.log('debug' , debug) ;
